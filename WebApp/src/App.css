@@ -1,0 +1,24 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #E3FDFD;
+  --light: #F9F7F7;
+  --light-dark: #393E46;
+  --dark: #1e1e1f;
+  --text: #071024;
+  --glass: rgba(0, 0, 0, 0.03);
+  --radius: 12px;
+  --surface: rgba(11, 18, 30, 0.03);
+  --font-heading: Serif, Georgia;
+  --font-body: sans-serif, 'Helvetaca';
+}
+
+body.dark {}
+
+body {
+  /* background: var(--dark);
+  color: white; */
+}

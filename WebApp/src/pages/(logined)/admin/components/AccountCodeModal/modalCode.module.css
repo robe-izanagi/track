@@ -1,0 +1,16 @@
+.mainContent {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  /* width: 820px, 95%; */
+  width: 720px;
+  height: 400px;
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+.right,
+.left {
+  width: 50%;
+}
+
