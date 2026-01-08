@@ -1,0 +1,22 @@
+{
+  "name": "track",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "install": "npm i --prefix server && npm i --prefix webapp && npm i --prefix mobile"
+    
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robe-izanagi/track.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/robe-izanagi/track/issues"
+  },
+  "homepage": "https://github.com/robe-izanagi/track#readme"
+}
