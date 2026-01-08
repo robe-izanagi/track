@@ -13,7 +13,9 @@ import {
   ScrollView,
 } from "react-native";
 import axios from "axios";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
+import { registerStyles as styles } from "@/styles/registerStyles";
+
 
 /**
  * NOTE on API_HOST:
@@ -54,7 +56,7 @@ export default function Register() {
       Alert.alert("Success", "Registered successfully! Now login.", [
         {
           text: "OK",
-          onPress: () => router.replace("/login"),
+          onPress: () => router.replace("/"),
         },
       ]);
     } catch (err: any) {
@@ -145,9 +147,9 @@ export default function Register() {
 
           <View style={styles.footer}>
             <Text>Already have an account? </Text>
-            <Pressable onPress={() => router.push("/login")}>
-              <Text style={styles.link}>Login</Text>
-            </Pressable>
+            <Link href="/" asChild>
+              <Text style={{ color: "#007AFF" }}>Go to Login</Text>
+            </Link>
           </View>
 
           <View style={{ height: 40 }} />
@@ -157,59 +159,4 @@ export default function Register() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  container: {
-    maxWidth: 640,
-    width: "100%",
-    alignSelf: "center",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    backgroundColor: "#fff",
-  },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 6,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  error: {
-    marginTop: 12,
-    color: "crimson",
-    fontWeight: "600",
-  },
-  footer: {
-    marginTop: 18,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  link: {
-    color: "#0a66c2",
-    fontWeight: "600",
-  },
-});
+
