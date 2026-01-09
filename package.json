@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "install": "npm i --prefix server && npm i --prefix webapp && npm i --prefix mobile"
-    
+    "install": "npm i --prefix server && npm i --prefix webapp && npm i --prefix mobile",
+    "start": "npm run start --prefix server",
+    "start2": "npm run dev --prefix webapp"
   },
   "repository": {
     "type": "git",
