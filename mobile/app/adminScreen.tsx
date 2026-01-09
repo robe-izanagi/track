@@ -33,7 +33,7 @@ export default function UserScreen() {
       if (storedUser) {
         const user = JSON.parse(storedUser);
         setName(user.username || "Admin");
-      }
+      } 
     };
     loadUser();
   }, []);

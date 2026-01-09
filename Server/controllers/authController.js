@@ -1,15 +1,17 @@
 // controllers/authController.js
-const User = require('../models/User');
-const AccountCode = require('../models/AccountCode');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
+const User = require("../models/User");
+const AccountCode = require("../models/AccountCode");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'verysecretjwtkey';
-const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
-const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || "verysecretjwtkey";
+const JWT_EXPIRES = process.env.JWT_EXPIRES || "7d";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || null;
-const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+const googleClient = GOOGLE_CLIENT_ID
+  ? new OAuth2Client(GOOGLE_CLIENT_ID)
+  : null;
 
 /** Helper: add minutes */
 function addMinutes(date, minutes) {
@@ -18,50 +20,47 @@ function addMinutes(date, minutes) {
 
 /** Helper: sign token */
 function signToken(user) {
-  return jwt.sign({ id: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  return jwt.sign(
+    { id: user._id, username: user.username, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES }
+  );
 }
 
-/**
- * REGISTER (kept logic you had)
- */
 exports.register = async (req, res) => {
   try {
     const { username, password, accountCode1, accountCode2 } = req.body;
     if (!username || !password || !accountCode1 || !accountCode2) {
-      return res.status(400).json({ error: 'Provide username, password and both account codes' });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     const codeDoc = await AccountCode.findOne({
       accountCode1,
       accountCode2,
-      usedBy: { $in: [null, ''] }
     });
 
-    if (!codeDoc) {
-      return res.status(401).json({ error: 'Invalid or already used Account Codes' });
-    }
-
-    // const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     const existingUsername = await User.findOne({ $or: [{ username }] });
-    // const existingTrackEmail = await User.findOne({ $or: [{ email }] });
     if (existingUsername) {
-      return res.status(400).json({ error: 'Username already taken' });
+      return res.status(400).json({ error: "Username already taken" });
     }
-    // if (existingTrackEmail) {
-    //   return res.status(400).json({ error: 'Email already taken' });
-    // }
+    if (!codeDoc) {
+      return res.status(401).json({ error: "Invalid account codes" });
+    }
+    if (codeDoc.usedBy) {
+      return res.status(409).json({ error: "Account codes already used" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = codeDoc.userType || 'user';
+    const role = codeDoc.userType || "user";
 
     const user = new User({
       username,
       password: hashedPassword,
       role,
       loginAttempts: 0,
-      status: 'active',
+      status: "active",
       lastSuccessfulLogin: null,
-      blockedUntil: null
+      blockedUntil: null,
     });
 
     await user.save();
@@ -69,76 +68,89 @@ exports.register = async (req, res) => {
     codeDoc.usedBy = username;
     await codeDoc.save();
 
-    return res.status(201).json({ message: 'User registered successfully' });
+    return res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    console.error('Register error:', error);
-    return res.status(500).json({ error: error.message || 'Server error' });
+    console.error("Register error:", error);
+    return res.status(500).json({ error: error.message || "Server error" });
   }
 };
 
-/**
- * LOGIN with brute-force protection (kept your flow)
- */
 exports.login = async (req, res) => {
+  const ATTEMPT_THRESHOLD = 8;
+  const BLOCK_MINUTES = 30;
+
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Provide email and password' });
 
-    const user = await User.findOne({ username });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-
-    // If user is blocked, check blockedUntil
-    if (user.status === 'blocked') {
-      const now = new Date();
-      if (user.blockedUntil && user.blockedUntil > now) {
-        // still blocked
-        return res.status(403).json({
-          error: 'Account blocked due to too many failed login attempts. Try again after: ' + user.blockedUntil.toISOString()
-        });
-      } else {
-        // blockedUntil has passed — auto-unblock
-        user.status = 'active';
-        user.loginAttempts = 0;
-        user.blockedUntil = null;
-        await user.save();
-      }
+    if (!username || !password) {
+      return res.status(400).json({ error: "Provide username and password" });
     }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      // failed attempt
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const now = new Date();
+
+    // 🔒 Handle blocked user
+    if (user.status === "blocked") {
+      if (user.blockedUntil && user.blockedUntil > now) {
+        return res.status(403).json({
+          error: `Account blocked. Try again after ${user.blockedUntil.toISOString()}`,
+        });
+      }
+
+      // auto-unblock
+      user.status = "active";
+      user.loginAttempts = 0;
+      user.blockedUntil = null;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    // ❌ Wrong password
+    if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
 
-      // if exceed threshold -> block for 30 minutes
-      const ATTEMPT_THRESHOLD = 8;
-      const BLOCK_MINUTES = 30;
 
       if (user.loginAttempts >= ATTEMPT_THRESHOLD) {
-        user.status = 'blocked';
-        user.blockedUntil = addMinutes(new Date(), BLOCK_MINUTES);
+        user.status = "blocked";
+        user.blockedUntil = addMinutes(now, BLOCK_MINUTES);
+
         await user.save();
         return res.status(403).json({
-          error: `Too many failed attempts. Account blocked until ${user.blockedUntil.toISOString()}. Try again after that or contact admin.`
+          error: `Too many failed attempts. Account blocked until ${formattedDate}`,
         });
-      } else {
-        await user.save();
-        return res.status(401).json({ error: 'Invalid credentials', attempts: user.loginAttempts });
       }
+
+      await user.save();
+      return res.status(401).json({
+        error: "Invalid credentials",
+        attempts: user.loginAttempts,
+      });
     }
 
     // successful login
     user.loginAttempts = 0;
-    user.status = 'active';
+    user.status = "active";
     user.blockedUntil = null;
     user.lastSuccessfulLogin = new Date();
     await user.save();
 
-    const token = jwt.sign({ id: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-    return res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+    return res.json({
+      token,
+      user: { id: user._id, username: user.username, role: user.role },
+    });
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ error: error.message || 'Server error' });
+    console.error("Login error:", error);
+    return res.status(500).json({ error: error.message || "Server error" });
   }
 };
 
@@ -147,26 +159,26 @@ exports.login = async (req, res) => {
  */
 exports.adminUnblock = async (req, res) => {
   try {
-    const secret = req.headers['x-admin-secret'];
+    const secret = req.headers["x-admin-secret"];
     if (!secret || String(secret) !== ADMIN_SECRET) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const userId = req.params.userId;
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    if (!userId) return res.status(400).json({ error: "Missing userId" });
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    user.status = 'active';
+    user.status = "active";
     user.loginAttempts = 0;
     user.blockedUntil = null;
     await user.save();
 
-    return res.json({ message: 'User unblocked' });
+    return res.json({ message: "User unblocked" });
   } catch (err) {
-    console.error('Admin unblock error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error("Admin unblock error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
@@ -191,12 +203,16 @@ exports.googleAuth = async (req, res) => {
 
     if (!id_token) {
       console.warn("googleAuth: no id_token provided");
-      return res.status(400).json({ message: 'id_token required' });
+      return res.status(400).json({ message: "id_token required" });
     }
 
     if (!googleClient) {
-      console.error("googleAuth: googleClient not configured (GOOGLE_CLIENT_ID missing)");
-      return res.status(500).json({ message: 'Google client not configured on server' });
+      console.error(
+        "googleAuth: googleClient not configured (GOOGLE_CLIENT_ID missing)"
+      );
+      return res
+        .status(500)
+        .json({ message: "Google client not configured on server" });
     }
 
     // verify token with Google
@@ -207,8 +223,11 @@ exports.googleAuth = async (req, res) => {
         audience: GOOGLE_CLIENT_ID,
       });
     } catch (verifyErr) {
-      console.error("googleAuth: verifyIdToken failed:", verifyErr?.message || verifyErr);
-      return res.status(400).json({ message: 'Invalid Google id_token' });
+      console.error(
+        "googleAuth: verifyIdToken failed:",
+        verifyErr?.message || verifyErr
+      );
+      return res.status(400).json({ message: "Invalid Google id_token" });
     }
 
     const payload = ticket.getPayload();
@@ -226,7 +245,7 @@ exports.googleAuth = async (req, res) => {
 
     if (!googleEmail && !googleId) {
       console.warn("googleAuth: payload missing email & sub");
-      return res.status(400).json({ message: 'Google token missing email/id' });
+      return res.status(400).json({ message: "Google token missing email/id" });
     }
 
     // STRICT MATCH: only find user if googleEmail or googleId matches stored google fields.
@@ -237,24 +256,43 @@ exports.googleAuth = async (req, res) => {
     console.log("googleAuth: strict queryParts:", queryParts);
     const user = await User.findOne({ $or: queryParts }).exec();
 
-    console.log("googleAuth: found user by google fields?:", !!user, user ? { id: user._id, username: user.username, role: user.role } : null);
+    console.log(
+      "googleAuth: found user by google fields?:",
+      !!user,
+      user ? { id: user._id, username: user.username, role: user.role } : null
+    );
 
     if (!user) {
       // NO AUTO-CREATION: require user to register with system codes first or link Google from profile
-      console.warn("googleAuth: no matching user for google account -> require register/link first");
+      console.warn(
+        "googleAuth: no matching user for google account -> require register/link first"
+      );
       return res.status(401).json({
         success: false,
-        error: 'Google account not linked. Please register with your TRACK account (using account codes) and link Google from Profile first.',
-        redirect: '/register'
+        error:
+          "Google account not linked. Please register with your TRACK account (using account codes) and link Google from Profile first.",
+        redirect: "/register",
       });
     }
 
     // Update missing google fields if any (safe)
     let changed = false;
-    if (!user.googleId && googleId) { user.googleId = googleId; changed = true; }
-    if (!user.googleEmail && googleEmail) { user.googleEmail = googleEmail; changed = true; }
-    if (!user.emailVerified && emailVerified) { user.emailVerified = true; changed = true; }
-    if (!user.name && name) { user.name = name; changed = true; }
+    if (!user.googleId && googleId) {
+      user.googleId = googleId;
+      changed = true;
+    }
+    if (!user.googleEmail && googleEmail) {
+      user.googleEmail = googleEmail;
+      changed = true;
+    }
+    if (!user.emailVerified && emailVerified) {
+      user.emailVerified = true;
+      changed = true;
+    }
+    if (!user.name && name) {
+      user.name = name;
+      changed = true;
+    }
     if (changed) {
       await user.save();
       console.log("googleAuth: updated user google fields");
@@ -274,16 +312,14 @@ exports.googleAuth = async (req, res) => {
         googleEmail: user.googleEmail,
         googleId: user.googleId,
         name: user.name,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (err) {
-    console.error('googleAuth err', err);
-    return res.status(500).json({ message: 'Google authentication failed' });
+    console.error("googleAuth err", err);
+    return res.status(500).json({ message: "Google authentication failed" });
   }
 };
-
-
 
 /**
  * POST /api/auth/google/link
@@ -296,18 +332,22 @@ exports.googleAuth = async (req, res) => {
 exports.linkGoogle = async (req, res) => {
   try {
     const { id_token } = req.body;
-    if (!id_token) return res.status(400).json({ error: 'id_token required' });
-    if (!googleClient) return res.status(500).json({ error: 'Google client not configured on server' });
+    if (!id_token) return res.status(400).json({ error: "id_token required" });
+    if (!googleClient)
+      return res
+        .status(500)
+        .json({ error: "Google client not configured on server" });
 
     // verify JWT (inline; you have this pattern elsewhere)
     const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required (Bearer token)' });
-    const token = auth.split(' ')[1];
+    if (!auth || !auth.startsWith("Bearer "))
+      return res.status(401).json({ error: "Auth required (Bearer token)" });
+    const token = auth.split(" ")[1];
     let payloadJwt;
     try {
       payloadJwt = jwt.verify(token, JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: "Invalid token" });
     }
 
     // verify google token
@@ -318,7 +358,7 @@ exports.linkGoogle = async (req, res) => {
     const g = ticket.getPayload();
 
     const user = await User.findById(payloadJwt.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     // NOTE: per your design, system email and google email CAN be different.
     // Link google fields to this existing user record.
@@ -340,16 +380,14 @@ exports.linkGoogle = async (req, res) => {
         // email: user.email,
         googleEmail: user.googleEmail,
         googleId: user.googleId,
-        name: user.name
-      }
+        name: user.name,
+      },
     });
   } catch (err) {
-    console.error('linkGoogle error', err);
-    return res.status(500).json({ error: 'Failed to link Google account' });
+    console.error("linkGoogle error", err);
+    return res.status(500).json({ error: "Failed to link Google account" });
   }
 };
-
-
 
 /**
  * GET /api/auth/profile
@@ -359,26 +397,30 @@ exports.linkGoogle = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required (Bearer token)' });
-    const token = auth.split(' ')[1];
+    if (!auth || !auth.startsWith("Bearer "))
+      return res.status(401).json({ error: "Auth required (Bearer token)" });
+    const token = auth.split(" ")[1];
     let payloadJwt;
     try {
       payloadJwt = jwt.verify(token, JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: "Invalid token" });
     }
 
     // include googleEmail and googleId in returned fields so frontend can show linked google
-    const user = await User.findById(payloadJwt.id).select('username email name emailVerified googleId googleEmail lastSuccessfulLogin status blockedUntil role').lean();
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await User.findById(payloadJwt.id)
+      .select(
+        "username email name emailVerified googleId googleEmail lastSuccessfulLogin status blockedUntil role"
+      )
+      .lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     return res.json({ user });
   } catch (err) {
-    console.error('getProfile error', err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error("getProfile error", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };
-
 
 /**
  * PUT /api/auth/profile
@@ -388,22 +430,24 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required (Bearer token)' });
-    const token = auth.split(' ')[1];
+    if (!auth || !auth.startsWith("Bearer "))
+      return res.status(401).json({ error: "Auth required (Bearer token)" });
+    const token = auth.split(" ")[1];
     let payloadJwt;
     try {
       payloadJwt = jwt.verify(token, JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: "Invalid token" });
     }
 
     const { username, password } = req.body;
     const user = await User.findById(payloadJwt.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     if (username && username !== user.username) {
       const exists2 = await User.findOne({ username });
-      if (exists2) return res.status(400).json({ error: 'Username already in use' });
+      if (exists2)
+        return res.status(400).json({ error: "Username already in use" });
       user.username = username;
     }
 
@@ -412,9 +456,12 @@ exports.updateProfile = async (req, res) => {
     }
 
     await user.save();
-    return res.json({ message: 'Profile updated', user: { id: user._id, username: user.username } });
+    return res.json({
+      message: "Profile updated",
+      user: { id: user._id, username: user.username },
+    });
   } catch (err) {
-    console.error('updateProfile error', err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error("updateProfile error", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };

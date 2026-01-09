@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { userScreenStyles as styles } from "@/styles/userScreenStyles";
 
 export default function UserScreen() {
+  
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [name, setName] = useState<string>("");
@@ -18,25 +19,20 @@ export default function UserScreen() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = await AsyncStorage.getItem("token");
+      const storedUser = await AsyncStorage.getItem("user");
       if (!token) {
         router.replace("/"); // login screen (index.tsx)
         return;
+      }
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        setName(user.username || "User");
       }
       setCheckingAuth(false);
     };
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const storedUser = await AsyncStorage.getItem("user");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        setName(user.username || "User");
-      }
-    };
-    loadUser();
-  }, []);
 
   if (checkingAuth) {
     return <ActivityIndicator style={{ flex: 1 }} />;
