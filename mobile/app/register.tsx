@@ -1,13 +1,10 @@
-// app/(auth)/register.tsx
 import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
@@ -15,14 +12,9 @@ import {
 import axios from "axios";
 import { Link, useRouter } from "expo-router";
 import { registerStyles as styles } from "@/styles/registerStyles";
+import Toast from "react-native-toast-message";
 
 
-/**
- * NOTE on API_HOST:
- * - Android emulator (default): use 10.0.2.2
- * - iOS simulator: localhost works
- * - Physical device: replace with your PC IP like http://192.168.1.42:5000
- */
 const API_BASE =
   Platform.OS === "android"
     ? "http://localhost:5000/api"
@@ -40,38 +32,46 @@ export default function Register() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    setMsg(null);
-    setLoading(true);
+  setMsg(null);
+  setLoading(true);
 
-    try {
-      await axios.post(`${API_BASE}/auth/register`, {
-        username,
-        // email,
-        password,
-        accountCode1,
-        accountCode2,
-      });
+  try {
+    await axios.post(`${API_BASE}/auth/register`, {
+      username,
+      password,
+      accountCode1,
+      accountCode2,
+    });
 
-      setLoading(false);
-      Alert.alert("Success", "Registered successfully! Now login.", [
-        {
-          text: "OK",
-          onPress: () => router.replace("/"),
-        },
-      ]);
-    } catch (err: any) {
-      setLoading(false);
+    setLoading(false);
 
-      const serverMsg =
-        err?.response?.data?.msg ||
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message ||
-        "Registration failed";
+    Toast.show({
+      type: "success",
+      text1: "Registration Successful",
+      text2: "You can now log in",
+    });
 
-      setMsg(String(serverMsg));
-    }
-  };
+    setTimeout(() => {
+      router.replace("/");
+    }, 1500);
+
+  } catch (err: any) {
+    setLoading(false);
+
+    const serverMsg =
+      err?.response?.data?.msg ||
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Registration failed";
+
+    Toast.show({
+      type: "error",
+      text1: "❌ Registration Failed ",
+      text2: String(serverMsg),
+    });
+  }
+};
 
   return (
     <KeyboardAvoidingView

@@ -11,7 +11,23 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
 import { loginStyles as styles } from "@/styles/loginStyles";
 
+function parseIsoFromString(s: string | undefined): string | null {
+  if (!s) return null;
+  // match ISO-like pattern example 2025-12-27T01:18:56.121Z or without ms
+  const m = s.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/);
+  return m ? m[0] : null;
+}
 
+function minutesUntil(iso: string) {
+  try {
+    const then = new Date(iso).getTime();
+    const now = Date.now();
+    const diff = Math.max(0, then - now);
+    return Math.ceil(diff / 60000);
+  } catch {
+    return null;
+  }
+}
 
 const API_BASE = "http://localhost:5000/api"; // Android emulator
 const ATTEMPT_THRESHOLD = 8;
@@ -26,7 +42,7 @@ export default function Login() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const makeFriendlyMessage = (err: any) => {
-    if (!err?.response) return "Network error. Check your connection.";
+    if (!err?.response) return "Server error. Please try again later.";
 
     const { status, data } = err.response;
 
@@ -40,56 +56,69 @@ export default function Login() {
     }
 
     if (status === 403) {
-      return data?.error || "Account temporarily blocked.";
+      const blockedUntil =
+        data?.blockedUntil ||
+        data?.blocked_at ||
+        parseIsoFromString(String(data?.error || data?.msg || ""));
+      if (blockedUntil) {
+        const mins = minutesUntil(blockedUntil);
+        if (mins !== null) {
+          return `Your account is blocked. Try again after ${mins} minute${
+            mins > 1 ? "s" : ""
+          } (at ${new Date(blockedUntil).toLocaleString()}).`;
+        }
+      }
+      // fallback to message
+      if (data?.error) return String(data.error);
+      if (data?.msg) return String(data.msg);
+      return "Access forbidden. Contact support.";
     }
 
-    if (status >= 500) return "Server error. Try again later.";
-
+    if (status >= 500) return ".";
     return data?.error || "Login failed.";
   };
 
   const handleSubmit = async () => {
-  // In React Native, there's no e.preventDefault()
-  setLoading(true);
+    // In React Native, there's no e.preventDefault()
+    setLoading(true);
 
-  try {
-    const res = await axios.post(`${API_BASE}/auth/login`, {
-      username,
-      password,
-    });
+    try {
+      const res = await axios.post(`${API_BASE}/auth/login`, {
+        username,
+        password,
+      });
 
-    const token = res?.data?.token;
-    const user = res?.data?.user;
+      const token = res?.data?.token;
+      const user = res?.data?.user;
 
-    if (!token) {
-      setNotice("Login succeeded but no token received. Contact admin.");
+      if (!token) {
+        setNotice("Login succeeded but no token received. Contact admin.");
+        setLoading(false);
+        return;
+      }
+
+      // Save token in AsyncStorage instead of localStorage
+      await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+
+      // Determine role and navigate
+      const role = user?.role?.toString().trim().toLowerCase();
+
+      if (role === "admin") {
+        router.replace("/adminScreen"); // Expo router navigation
+      } else if (role === "user") {
+        router.replace("/userScreen");
+      } else {
+        // fallback
+        router.replace("/");
+      }
+    } catch (err: any) {
+      const friendly = makeFriendlyMessage(err);
+      setNotice(friendly);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Save token in AsyncStorage instead of localStorage
-    await AsyncStorage.setItem("token", token);
-    await AsyncStorage.setItem("user", JSON.stringify(user));
-
-    // Determine role and navigate
-    const role = user?.role?.toString().trim().toLowerCase();
-
-    if (role === "admin") {
-      router.replace("/adminScreen"); // Expo router navigation
-    } else if (role === "user") {
-      router.replace("/userScreen");
-    } else {
-      // fallback
-      router.replace("/");
-    }
-
-  } catch (err: any) {
-    const friendly = makeFriendlyMessage(err);
-    setNotice(friendly);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <View style={styles.container}>
