@@ -4,39 +4,22 @@ import { StyleSheet } from "react-native";
 export const userScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
     justifyContent: "center",
+    alignItems: "center",
   },
   title: {
-    fontSize: 26,
-    fontWeight: "700",
-    marginBottom: 24,
-    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 20,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
+  logoutButton: {
+    backgroundColor: "#ff3b30",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
   },
-  button: {
-    backgroundColor: "#111",
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonText: {
+  logoutText: {
     color: "#fff",
     fontWeight: "600",
-  },
-  link: {
-    color: "#0a66c2",
-    marginBottom: 12,
-  },
-  error: {
-    color: "#b00020",
-    marginTop: 12,
   },
 });

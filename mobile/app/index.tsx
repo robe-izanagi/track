@@ -4,14 +4,12 @@ import {
   Text,
   TextInput,
   Pressable,
-  StyleSheet,
   ActivityIndicator,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { loginStyles as styles } from "@/styles/loginStyles";
-import { useRouter } from "expo-router";
 
 
 
@@ -71,11 +69,12 @@ export default function Login() {
 
     // Save token in AsyncStorage instead of localStorage
     await AsyncStorage.setItem("token", token);
+    await AsyncStorage.setItem("user", JSON.stringify(user));
 
     // Determine role and navigate
     const role = user?.role?.toString().trim().toLowerCase();
 
-    if (username === "admin") {
+    if (role === "admin") {
       router.replace("/adminScreen"); // Expo router navigation
     } else if (role === "user") {
       router.replace("/userScreen");
