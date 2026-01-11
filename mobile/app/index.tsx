@@ -41,6 +41,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+
   const makeFriendlyMessage = (err: any) => {
     if (!err?.response) return "Server error. Please try again later.";
 
@@ -52,7 +53,7 @@ export default function Login() {
         const rem = ATTEMPT_THRESHOLD - attempts;
         return `Wrong password. ${rem} attempt${rem > 1 ? "s" : ""} left.`;
       }
-      return "Wrong username or password.";
+      return "Account not found";
     }
 
     if (status === 403) {

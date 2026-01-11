@@ -12,14 +12,27 @@ export const adminScreenStyles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
   },
-  logoutButton: {
-    backgroundColor: "#ff3b30",
+  subtitle: {
+    marginBottom: 12,
+    color: "#666",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  button: {
+    backgroundColor: "#1976d2",
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 8,
   },
-  logoutText: {
+  buttonText: {
     color: "#fff",
     fontWeight: "600",
+  },
+  section: {
+    marginTop: 40,
   },
 });

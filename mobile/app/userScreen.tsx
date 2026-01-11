@@ -1,21 +1,28 @@
-import { View, Text, ActivityIndicator, Pressable } from "react-native";
-import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+} from "react-native";
+import React, { useEffect, useState, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { userScreenStyles as styles } from "@/styles/userScreenStyles";
+import Logout from "./components/logout";
+import axios from "axios";
+
+const API_BASE = "http://localhost:5000/api"; 
 
 export default function UserScreen() {
-  
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [name, setName] = useState<string>("");
-
   const handleLogout = async () => {
     await AsyncStorage.removeItem("token");
     await AsyncStorage.removeItem("user");
     router.replace("/"); // redirect to login
   };
-
   useEffect(() => {
     const checkAuth = async () => {
       const token = await AsyncStorage.getItem("token");
@@ -33,7 +40,6 @@ export default function UserScreen() {
     checkAuth();
   }, []);
 
-
   if (checkingAuth) {
     return <ActivityIndicator style={{ flex: 1 }} />;
   }
@@ -41,9 +47,7 @@ export default function UserScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome {name}!</Text>
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </Pressable>
+      <Logout />
     </View>
   );
 }

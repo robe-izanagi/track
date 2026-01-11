@@ -12,14 +12,4 @@ export const userScreenStyles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
   },
-  logoutButton: {
-    backgroundColor: "#ff3b30",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
 });
