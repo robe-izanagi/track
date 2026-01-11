@@ -1,9 +1,8 @@
-// controllers/authController.js
 const User = require("../models/User");
 const AccountCode = require("../models/AccountCode");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { OAuth2Client } = require("google-auth-library");
+const { OAuth2Client, UserRefreshClient } = require("google-auth-library");
 
 const JWT_SECRET = process.env.JWT_SECRET || "verysecretjwtkey";
 const JWT_EXPIRES = process.env.JWT_EXPIRES || "7d";
@@ -83,12 +82,12 @@ exports.login = async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: "Provide username and password" });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Account not found" });
     }
 
     const now = new Date();
@@ -113,14 +112,13 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       user.loginAttempts = (user.loginAttempts || 0) + 1;
 
-
       if (user.loginAttempts >= ATTEMPT_THRESHOLD) {
         user.status = "blocked";
         user.blockedUntil = addMinutes(now, BLOCK_MINUTES);
 
         await user.save();
         return res.status(403).json({
-          error: `Too many failed attempts. Account blocked until ${formattedDate}`,
+          error: `Account blocked. Try again after ${user.blockedUntil.toISOString()}`,
         });
       }
 
@@ -144,9 +142,12 @@ exports.login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
+    const userData = user.toObject();
+    delete userData.password;
+
     return res.json({
       token,
-      user: { id: user._id, username: user.username, role: user.role },
+      user: userData,
     });
   } catch (error) {
     console.error("Login error:", error);
