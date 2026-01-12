@@ -18,17 +18,13 @@ export default function UserScreen() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [name, setName] = useState<string>("");
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("user");
-    router.replace("/"); // redirect to login
-  };
+ 
   useEffect(() => {
     const checkAuth = async () => {
       const token = await AsyncStorage.getItem("token");
       const storedUser = await AsyncStorage.getItem("user");
       if (!token) {
-        router.replace("/"); // login screen (index.tsx)
+        router.replace("/"); 
         return;
       }
       if (storedUser) {
