@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import GenerateAccountCodes from "./t";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -38,6 +39,7 @@ export default function AccountCodesScreen() {
   const [codes, setCodes] = useState<AccountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showGenerator, setShowGenerator] = useState(false);
 
   const checkAuth = async () => {
     const token = await AsyncStorage.getItem("token");
@@ -48,7 +50,6 @@ export default function AccountCodesScreen() {
     setCheckingAuth(false);
   };
 
-  // ✅ DEFINE FUNCTIONS FIRST
   const fetchStats = async () => {
     const res = await axios.get(`${API_BASE}/code/stats`);
     setStats(res.data);
@@ -59,7 +60,10 @@ export default function AccountCodesScreen() {
     setCodes(res.data.codes);
   };
 
-  // ✅ THEN USE THEM
+  const refreshScreen = useCallback(() => {
+    fetchCodes();
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -72,7 +76,7 @@ export default function AccountCodesScreen() {
     };
 
     loadData();
-  }, []);
+  });
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleString("en-US", {
@@ -101,7 +105,6 @@ export default function AccountCodesScreen() {
 
   return (
     <>
-      {/* ===== STATS ===== */}
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Account Code Statistics</Text>
 
@@ -112,9 +115,21 @@ export default function AccountCodesScreen() {
           <StatCard label="User Codes" value={stats.userCount} />
           <StatCard label="Active Admins" value={stats.activeAdminCount} />
           <StatCard label="Active Users" value={stats.activeUserCount} />
+
+          <Pressable
+            style={styles.button}
+            onPress={() => setShowGenerator(true)}
+          >
+            <Text style={styles.buttonText}>Generate Account Codes</Text>
+          </Pressable>
         </View>
 
-        {/* ===== TABLE ===== */}
+        <GenerateAccountCodes
+          visible={showGenerator}
+          onClose={() => setShowGenerator(false)}
+          onSuccess={refreshScreen}
+        />
+
         <ScrollView horizontal>
           <View>
             <View style={[styles.row, styles.header]}>
@@ -195,5 +210,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     color: "#555",
+  },
+  button: {
+    backgroundColor: "#2563eb",
+    padding: 14,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
