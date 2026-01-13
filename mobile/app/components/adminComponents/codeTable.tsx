@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import GenerateAccountCodes from "./t";
+import GenerateAccountCodes from "./codeGenerator";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -105,6 +105,14 @@ export default function AccountCodesScreen() {
 
   return (
     <>
+      <Pressable
+        onPress={() => router.back()}
+        style={{ paddingVertical: 8, paddingHorizontal: 12 }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: "500", color: "#007AFF" }}>
+          {"< Back"}
+        </Text>
+      </Pressable>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Account Code Statistics</Text>
 

@@ -36,10 +36,13 @@ export default function AdminScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Welcome {name}!</Text>
         <Logout />
-         {/* This is a JSX comment 
-        */}
-        <Pressable onPress={() => router.push("/components/adminComponents/codeTable")}>
-          <Text>Code</Text>
+
+        <Pressable style={styles.Button} onPress={() => router.push("/components/adminComponents/codeTable")}>
+          <Text style={styles.Text} >Code</Text>
+        </Pressable>
+
+        <Pressable style={styles.Button} onPress={() => router.push("/components/adminComponents/userTable")}>
+          <Text style={styles.Text} >Account</Text>
         </Pressable>
       </View>
     </>

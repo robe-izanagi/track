@@ -35,4 +35,15 @@ export const adminScreenStyles = StyleSheet.create({
   section: {
     marginTop: 40,
   },
+  Button: {
+    backgroundColor: "#2c201f",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  Text: {
+    color: "#fff",
+    fontWeight: "600",
+  },
 });

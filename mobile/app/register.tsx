@@ -47,7 +47,7 @@ export default function Register() {
 
     Toast.show({
       type: "success",
-      text1: "Registration Successful",
+      text1: "✅ Registration Successful",
       text2: "You can now log in",
     });
 
