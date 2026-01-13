@@ -13,7 +13,6 @@ import { loginStyles as styles } from "@/styles/loginStyles";
 
 function parseIsoFromString(s: string | undefined): string | null {
   if (!s) return null;
-  // match ISO-like pattern example 2025-12-27T01:18:56.121Z or without ms
   const m = s.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/);
   return m ? m[0] : null;
 }
@@ -29,7 +28,7 @@ function minutesUntil(iso: string) {
   }
 }
 
-const API_BASE = "http://localhost:5000/api"; // Android emulator
+const API_BASE = "http://localhost:5000/api"; 
 const ATTEMPT_THRESHOLD = 8;
 
 export default function Login() {
@@ -69,7 +68,6 @@ export default function Login() {
           } (at ${new Date(blockedUntil).toLocaleString()}).`;
         }
       }
-      // fallback to message
       if (data?.error) return String(data.error);
       if (data?.msg) return String(data.msg);
       return "Access forbidden. Contact support.";
@@ -80,7 +78,6 @@ export default function Login() {
   };
 
   const handleSubmit = async () => {
-    // In React Native, there's no e.preventDefault()
     setLoading(true);
 
     try {
@@ -98,19 +95,16 @@ export default function Login() {
         return;
       }
 
-      // Save token in AsyncStorage instead of localStorage
       await AsyncStorage.setItem("token", token);
       await AsyncStorage.setItem("user", JSON.stringify(user));
 
-      // Determine role and navigate
       const role = user?.role?.toString().trim().toLowerCase();
 
       if (role === "admin") {
-        router.replace("/adminScreen"); // Expo router navigation
+        router.replace("/adminScreen"); 
       } else if (role === "user") {
         router.replace("/userScreen");
       } else {
-        // fallback
         router.replace("/");
       }
     } catch (err: any) {
